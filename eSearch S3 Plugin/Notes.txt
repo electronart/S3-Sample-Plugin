@@ -1,0 +1,19 @@
+﻿PluginInformation.cs
+--------------------
+
+Provides basic information about the Plugin to eSearch to display in the Plugin Manager UI.
+Also declares the minimum required version to ensure compatibility.
+
+S3DataSourceManager.cs
+--------------------
+
+Manages DataSources and their configurations.
+
+In this case, the DataSource is Amazon S3 and the configuration is which S3 buckets should be indexed in which index.
+
+Note that it implements IPluginDataSourceManager. eSearch looks for classes implementing this interface. There should be one for each datasource the plugin supports.
+
+S3BucketDataSource.cs
+---------------------
+
+The IDataSource object that eSearch will use to retrieve documents.
