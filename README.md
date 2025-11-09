@@ -1,4 +1,6 @@
 ## S3 Sample plugin
+<img src="https://searchcloudone.com/wp-content/uploads/tarilio_header.png"/>
+
 This plugin is for use with TARILIO (previously known as eSearch Pro) and TARILIO PRO to enable indexing and searching of files stored in Amazon Web Services (AWS) S3 buckets.
 
 TARILIO and TARILIO PRO are information retrieval products incorporating both full-text search using the Apache Lucene search engine and multi-turn conversation ability using online or locally installed Large Language Models (LLMs).
