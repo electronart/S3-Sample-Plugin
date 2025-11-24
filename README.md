@@ -12,6 +12,8 @@ This plugin can connect to private or public S3 buckets, it includes a connectio
 ### Contributing
 Feel free to fork and use as a basis for developing plugins to connect to other online data sources for the eSearch-project.
 
+Instructions for creating a plugin can be found on the Wiki here: [https://github.com/electronart/S3-Sample-Plugin/wiki/TARILIO-Plugins](https://github.com/electronart/S3-Sample-Plugin/wiki/TARILIO-Plugins)
+
 ### Builds
 You can download a zipped Windows installer free from here: [https://tarilio.com](https://tarilio.com/wp-content/uploads/2025/11/eSearch-S3-v1.0.9225.30870.zip)
 
