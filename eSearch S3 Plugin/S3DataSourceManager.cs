@@ -11,6 +11,8 @@ using eSearch_S3_Plugin.Utils;
 using eSearch_S3_Plugin.Configuration;
 using Avalonia.Controls;
 using System.Reflection;
+using System.Diagnostics;
+using Avalonia;
 
 namespace eSearch_S3_Plugin
 {
@@ -42,7 +44,8 @@ namespace eSearch_S3_Plugin
         }
 
         #region Connection UI Handling
-        private TaskCompletionSource<bool>? taskCompletionSource;
+
+        eSearch_S3_Plugin_AvaloniaUI.LifeTime? windowLifeTime;
 
         /// <summary>
         /// When this task completes, eSearch will again call GetConfiguredDataSources to refresh the list.
@@ -53,44 +56,81 @@ namespace eSearch_S3_Plugin
         /// <exception cref="NotSupportedException">dataSource is not a S3BucketDataSource</exception>
         public async Task InvokeDataSourceConfigurator(string indexID, IDataSource? dataSource)
         {
+            #region Hard-coded setup
+            //await Task.Run(() =>
+            //{
+            //    S3BucketDataSource newDataSource = new S3BucketDataSource
+            //    {
+            //        IndexID = indexID,
+            //        BucketName = "s3-pugin-demo-bucket", //"electronart.co.uk",
+            //        AWSAccessKey = string.Empty,
+            //        AWSSecretKey = string.Empty,
+            //        BucketRegionEndpoint = "eu-west-2"
+            //    };
+            //    PluginConfig.S3BucketDataSources.Add(newDataSource);
+            //    PluginConfig.SaveConfig();
+            //});
+            #endregion
+
+            #region Temporarily Commented out for Demo
             if (dataSource == null)
             {
                 // Creating a new DataSource.
-                dataSource = new S3BucketDataSource { 
-                    AWSAccessKey = string.Empty, 
-                    AWSSecretKey = string.Empty, 
-                    BucketName   = string.Empty,
-                    IndexID      = indexID
+                dataSource = new S3BucketDataSource
+                {
+                    AWSAccessKey = string.Empty,
+                    AWSSecretKey = string.Empty,
+                    BucketName = "s3-plugin-demo-bucket",
+                    IndexID = indexID,
+                    BucketRegionEndpoint = "eu-west-2"
                 };
             }
             if (dataSource is S3BucketDataSource bucketDS)
             {
-                S3BucketConfigurationWindowViewModel viewModel = new S3BucketConfigurationWindowViewModel
+                try
                 {
-                    BucketName = bucketDS.BucketName,
-                    UseAuthentication = bucketDS.AWSAccessKey != string.Empty,
-                    AccessKey = Base64.Decode(bucketDS.AWSAccessKey),
-                    SecretAccessKey = Base64.Decode(bucketDS.AWSSecretKey),
-                    IndexID = indexID,
-                };
-
-                S3BucketConfigurationWindow window = new S3BucketConfigurationWindow();
-                window.DataContext = viewModel;
-                window.ClickedOK += Window_ClickedOK;
-                window.Show();
-                window.Closed += Window_Closed;
-                taskCompletionSource = new TaskCompletionSource<bool>();
-                await taskCompletionSource.Task;
+                    S3BucketConfigurationWindowViewModel viewModel = new S3BucketConfigurationWindowViewModel
+                    {
+                        BucketName = bucketDS.BucketName,
+                        UseAuthentication = bucketDS.AWSAccessKey != string.Empty,
+                        AccessKey = Base64.Decode(bucketDS.AWSAccessKey),
+                        SecretAccessKey = Base64.Decode(bucketDS.AWSSecretKey),
+                        IndexID = indexID,
+                        Region = bucketDS.BucketRegionEndpoint
+                    };
+                    #region Start a new Window Lifetime in the Plugin (Needed for Avalonia)
+                    if (windowLifeTime != null) {
+                        windowLifeTime.EndLifeTime();
+                    }
+                    windowLifeTime = eSearch_S3_Plugin_AvaloniaUI.LifeTime.NewLifeTime(); // Needed for Plugin Avalonia UI. The lifetime is ended when the window is closed.
+                    #endregion
+                    S3BucketConfigurationWindow window = new S3BucketConfigurationWindow();
+                    window.DataContext = viewModel;
+                    window.ClickedOK += Window_ClickedOK;
+                    window.Show();
+                    var tcs = new TaskCompletionSource<object>();
+                    window.Closed += (sender, args) =>
+                    {
+                        windowLifeTime?.EndLifeTime();
+                        tcs.SetResult(true);
+                    };
+                    await tcs.Task;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.ToString());
+                }
             }
             else
             {
                 throw new NotSupportedException("Unrecognized Data Source Type");
             }
+            #endregion
         }
 
         private void Window_Closed(object? sender, EventArgs e)
         {
-            taskCompletionSource?.SetResult(true);
+            
         }
 
         /// <summary>
@@ -99,13 +139,17 @@ namespace eSearch_S3_Plugin
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void Window_ClickedOK(object? sender, S3BucketConfigurationWindowViewModel e)
+        private async void Window_ClickedOK(object? sender, S3BucketConfigurationWindowViewModel e)
         {
             #region Basic validation
             if (string.IsNullOrWhiteSpace(e.BucketName))
             {
                 e.ValidationError = "Bucket Name Required";
                 return;
+            }
+            if (string.IsNullOrWhiteSpace(e.Region))
+            {
+                e.ValidationError = "Region Required";
             }
             if (e.UseAuthentication)
             {
@@ -130,12 +174,15 @@ namespace eSearch_S3_Plugin
                     AWSAccessKey = e.AccessKey,
                     AWSSecretKey = e.SecretAccessKey,
                     BucketName = e.BucketName,
-                    IndexID = e.IndexID
+                    IndexID = e.IndexID,
+                    BucketRegionEndpoint = e.Region
                 };
-                if (!testDS.TestS3Connection(out string errorMsg))
+
+                var res = await testDS.TestS3Connection();
+                if (res.Item1 == false)
                 {
-                    e.ValidationError = errorMsg;
-                    return;
+                    // Connection Failed.
+                    e.ValidationError = res.Item2;
                 } else
                 {
                     // Connected Successfully. Save the new Configuration.

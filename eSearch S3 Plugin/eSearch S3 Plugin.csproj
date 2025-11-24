@@ -7,10 +7,18 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+	<PropertyGroup>
+	    <Deterministic>false</Deterministic>
+	    <AssemblyVersion>1.0.*</AssemblyVersion>
+	    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	</PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.2.5" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.5" />
     <PackageReference Include="AWSSDK.S3" Version="3.7.415.19" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Drawing.Common" Version="9.0.3" />
     <PackageReference Include="System.Resources.Extensions" Version="9.0.3" />
   </ItemGroup>
@@ -28,5 +36,23 @@
   <ItemGroup>
     <Folder Include="Properties\" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="icons8-S3Icon.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+	<!--
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="&quot;$(SolutionDir)\eSearch Plugin Builder\bin\Debug\net8.0\eSearch Plugin Builder.exe&quot; v$(AssemblyVersion)" WorkingDirectory="$(OutDir)" />
+  </Target>
+  -->
+<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+	<GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
+		<Output TaskParameter="Assemblies" ItemName="AssemblyInfo" />
+	</GetAssemblyIdentity>
+	<Exec Command="&quot;$(SolutionDir)\eSearch Plugin Builder\bin\Debug\net8.0\eSearch Plugin Builder.exe&quot; v%(AssemblyInfo.Version)" WorkingDirectory="$(OutDir)" />
+</Target>
 
 </Project>

@@ -9,12 +9,33 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using eSearch_S3_Plugin.Utils;
+using Amazon;
+using Amazon.Runtime;
 
 
 namespace eSearch_S3_Plugin
 {
     public class S3BucketDataSource : IDataSource , IRequiresESearchFileParser
     {
+
+        #region Override Equality Checks to allow eSearch to find this datasource for various operations such as edit/remove.
+        public string Identifier = Guid.NewGuid().ToString();
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is S3BucketDataSource ds)
+            {
+                return ds.Identifier.Equals(Identifier);
+            }
+            return false;
+        }
+
+        public override int GetHashCode() { 
+            return Identifier.GetHashCode();
+        }
+        #endregion
+
+
         #region Configuration Data
         /// <summary>
         /// The eSearch index this DataSource belongs to.
@@ -31,21 +52,29 @@ namespace eSearch_S3_Plugin
         // For S3 Authentication.
         public required string AWSSecretKey;
 
+        // For S3. Eg. eu-west-2
+        public required string BucketRegionEndpoint;
+
         /// <summary>
         /// Method to test that the configuration is OK.
         /// </summary>
         /// <returns></returns>
-        public bool TestS3Connection(out string errorMsg)
+        public async Task<Tuple<bool, string>> TestS3Connection()
         {
             try
             {
-                // TODO
-                throw new NotImplementedException();
+                var request = new ListObjectsV2Request
+                {
+
+                    BucketName = BucketName,
+                    ContinuationToken = null
+                };
+                var response = await S3Client.ListObjectsV2Async(request);
+                return new Tuple<bool, string> ( true, "" );
             }
             catch (Exception ex)
             {
-                errorMsg = ex.Message;
-                return false;
+                return new Tuple<bool, string>( false, ex.Message );
             }
         }
 
@@ -68,6 +97,8 @@ namespace eSearch_S3_Plugin
 
         private int     _currentDocumentIndex = 0;
 
+        private string _currentFileName = string.Empty;
+
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
         private List<Tuple<string, long>> _queuedS3Obects = new List<Tuple<string, long>>();
@@ -80,10 +111,10 @@ namespace eSearch_S3_Plugin
                 {
                     if (string.IsNullOrWhiteSpace(AWSAccessKey))
                     {
-                        _s3Client = new AmazonS3Client();
+                        _s3Client = new AmazonS3Client(new AnonymousAWSCredentials(), RegionEndpoint.GetBySystemName(BucketRegionEndpoint));
                     } else
                     {
-                        _s3Client = new AmazonS3Client(AWSAccessKey, AWSSecretKey);
+                        _s3Client = new AmazonS3Client(AWSAccessKey, AWSSecretKey, RegionEndpoint.GetBySystemName(BucketRegionEndpoint));
                     }
                 }
                 return _s3Client;
@@ -92,16 +123,35 @@ namespace eSearch_S3_Plugin
 
         private AmazonS3Client? _s3Client = null;
 
-
+        private string _tempFile = string.Empty;
+        
 
 
         public string Description()
         {
-            return "S3 Bucket: " + BucketName;
+            string str = "S3 Bucket: " + BucketName;
+            if (_currentFileName != string.Empty)
+            {
+                str += " - " + _currentFileName;
+            }
+            return str;
         }
 
         public void GetNextDoc(out IDocument document, out bool isDiscoveryComplete)
         {
+            #region Cleanup Previous Temp file, if any.
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(_tempFile) && File.Exists(_tempFile))
+                {
+                    File.Delete(_tempFile);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.Log(ILogger.Severity.ERROR, "Error deleting temp file", ex);
+            }
+            #endregion
             isDiscoveryComplete = _listS3ObjectsFinished;
             if (_listS3ObjectsTask == null)
             {
@@ -114,6 +164,7 @@ namespace eSearch_S3_Plugin
                 _queuedS3Obects.RemoveAt(0);
                 var key     = s3Object.Item1;
                 var size    = s3Object.Item2;
+                _currentFileName = key;
                 try
                 {
                     using var res = S3Client.GetObjectAsync(BucketName, key, _cancellationTokenSource.Token).Result;
@@ -122,17 +173,18 @@ namespace eSearch_S3_Plugin
                     Directory.CreateDirectory(outputDir);
                     string tempFileName = Path.Combine(outputDir, Path.GetFileName(key));
 
-                    res.WriteResponseStreamToFileAsync(tempFileName, false, _cancellationTokenSource.Token).RunSynchronously();
+                    var result = Task.Run(async () =>
+                    {
+                        await res.WriteResponseStreamToFileAsync(tempFileName, false, _cancellationTokenSource.Token);
+                        return true;
+                    }).Result;
+
+                    _tempFile = tempFileName; // We'll delete this on GetNextFile. Deleting it syncrhonously here would cause parse issues.
+
                     if (fileParser is IESearchFileParser mFileParser)
                     {
                         document = mFileParser.ParseFile(tempFileName);
-                        try
-                        {
-                            File.Delete(tempFileName);
-                        } catch (Exception ex)
-                        {
-                            _logger?.Log(ILogger.Severity.ERROR, "Error deleting temp file", ex);
-                        }
+                        
                         return;
                     } else
                     {
@@ -155,7 +207,19 @@ namespace eSearch_S3_Plugin
 
         public double GetProgress()
         {
-            throw new NotImplementedException();
+            try
+            {
+                int totalFilesIterated = _discoveredDocumentCount - _queuedS3Obects.Count;
+
+                float val = (float.Parse(totalFilesIterated.ToString()) / float.Parse((_discoveredDocumentCount).ToString())) * 100.0f;
+                int progress = (int)Math.Round(val);
+                if (progress < 0) progress = 0;
+                if (progress > 100) progress = 100;
+                return progress;
+            } catch (Exception ex)
+            {
+                return 0;
+            }
         }
 
         public int GetTotalDiscoveredDocuments()
@@ -165,12 +229,20 @@ namespace eSearch_S3_Plugin
 
         public void Rewind()
         {
-            throw new NotImplementedException();
+            _listS3ObjectsTask = null;
+            _listS3ObjectsFinished = false;
+            _discoveredDocumentCount = 0;
+            _totalDiscoveredDocumentBytes = 0;
+            _totalIndexedDocumentBytes = 0;
+            _currentDocumentIndex = 0;
+            _cancellationTokenSource = new CancellationTokenSource();
+            _queuedS3Obects = new List<Tuple<string, long>>();
+            _currentFileName = string.Empty;
         }
 
         public string ToString(string? format, IFormatProvider? formatProvider)
         {
-            throw new NotImplementedException();
+            return Description();
         }
 
         public void UseIndexTaskLog(ILogger logger)
@@ -186,29 +258,38 @@ namespace eSearch_S3_Plugin
         private async Task ListS3ObjectsInBucket(CancellationToken cancellationToken)
         {
             string? continuationToken = null;
-
-            do
+            try
             {
-                var request = new ListObjectsV2Request
+                do
                 {
-                    BucketName = BucketName,
-                    ContinuationToken = continuationToken
-                };
+                    var request = new ListObjectsV2Request
+                    {
+                        
+                        BucketName = BucketName,
+                        ContinuationToken = continuationToken
+                    };
 
-                var response = await S3Client.ListObjectsV2Async(request);
+                    var response = await S3Client.ListObjectsV2Async(request);
 
-                foreach (S3Object obj in response.S3Objects)
-                {
-                    _totalDiscoveredDocumentBytes += obj.Size;
-                    _discoveredDocumentCount++;
+                    foreach (S3Object obj in response.S3Objects)
+                    {
+                        _totalDiscoveredDocumentBytes += obj.Size;
+                        _discoveredDocumentCount++;
 
-                    Console.WriteLine($"Key: {obj.Key}, Size: {obj.Size}, LastModified: {obj.LastModified}");
-                    // Process each file here
-                    _queuedS3Obects.Add(new Tuple<string, long>(obj.Key, obj.Size));
-                }
+                        Console.WriteLine($"Key: {obj.Key}, Size: {obj.Size}, LastModified: {obj.LastModified}");
+                        // Process each file here
+                        _queuedS3Obects.Add(new Tuple<string, long>(obj.Key, obj.Size));
+                    }
 
-                continuationToken = response.NextContinuationToken;
-            } while (continuationToken != null);
+                    continuationToken = response.NextContinuationToken;
+                } while (continuationToken != null);
+            } catch (Exception ex)
+            {
+                _logger?.Log(ILogger.Severity.ERROR, "Error listing objects in bucket", ex);
+            } finally
+            {
+                _listS3ObjectsFinished = true;
+            }
         }
 
         

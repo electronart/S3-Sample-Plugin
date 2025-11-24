@@ -16,6 +16,12 @@ public partial class S3BucketConfigurationWindow : Window
         InitializeComponent();
 
         BtnOK.Click += BtnOK_Click; // We only need an OK event for testing the connection.
+        BtnCancel.Click += BtnCancel_Click;
+    }
+
+    private void BtnCancel_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        Close();
     }
 
     private void BtnOK_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

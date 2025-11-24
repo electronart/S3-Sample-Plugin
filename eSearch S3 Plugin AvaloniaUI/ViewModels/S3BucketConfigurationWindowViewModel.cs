@@ -23,6 +23,20 @@ namespace eSearch_S3_Plugin_AvaloniaUI.ViewModels
 
         private string _bucketName = string.Empty;
 
+        public string Region
+        {
+            get
+            {
+                return _bucketRegion;
+            }
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _bucketRegion, value);
+            }
+        }
+
+        private string _bucketRegion = string.Empty;
+
         public bool UseAuthentication
         {
             get
@@ -32,6 +46,11 @@ namespace eSearch_S3_Plugin_AvaloniaUI.ViewModels
             set
             {
                 this.RaiseAndSetIfChanged(ref _useAuthentication, value);
+                if (_useAuthentication == false)
+                {
+                    AccessKey = string.Empty;
+                    SecretAccessKey = string.Empty;
+                }
             }
         }
 

@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "eSearch S3 Plugin", "eSearc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "eSearch S3 Plugin AvaloniaUI", "eSearch S3 Plugin AvaloniaUI\eSearch S3 Plugin AvaloniaUI.csproj", "{87563B2C-9D59-438B-A8B7-C44EF8B345C5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "eSearch Plugin Builder", "eSearch Plugin Builder\eSearch Plugin Builder.csproj", "{6C2A5100-2728-4D2E-8BAE-75C09415C583}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{87563B2C-9D59-438B-A8B7-C44EF8B345C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87563B2C-9D59-438B-A8B7-C44EF8B345C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87563B2C-9D59-438B-A8B7-C44EF8B345C5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6C2A5100-2728-4D2E-8BAE-75C09415C583}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C2A5100-2728-4D2E-8BAE-75C09415C583}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C2A5100-2728-4D2E-8BAE-75C09415C583}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C2A5100-2728-4D2E-8BAE-75C09415C583}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

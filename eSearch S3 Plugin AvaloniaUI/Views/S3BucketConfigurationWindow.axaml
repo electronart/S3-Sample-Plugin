@@ -4,11 +4,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 		xmlns:vm="using:eSearch_S3_Plugin_AvaloniaUI.ViewModels"
         mc:Ignorable="d" 
-		Width="500" Height="400"
+		Width="500" Height="475"
         x:Class="eSearch_S3_Plugin_AvaloniaUI.S3BucketConfigurationWindow"
 		x:DataType="vm:S3BucketConfigurationWindowViewModel"
         Title="Configure Bucket"
 		ExtendClientAreaToDecorationsHint="True"
+		WindowStartupLocation="CenterScreen"
+		CanResize="False"
 		>
 	<Window.Styles>
 		<Style Selector="Label.Error">
@@ -17,7 +19,7 @@
 	</Window.Styles>
 	<DockPanel Margin="20,50,20,20">
 		<StackPanel 
-			IsEnabled="{Binding IsConnecting}"
+			IsEnabled="{Binding !IsConnecting}"
 			DockPanel.Dock="Bottom" 
 			VerticalAlignment="Top" 
 			Height="60">
@@ -27,23 +29,28 @@
 				Spacing="5"
 				HorizontalAlignment="Right">
 				<Button 
-					MinWidth="100" 
+					MinWidth="150" 
 					HorizontalContentAlignment="Center"
 					x:Name="BtnOK"
 					>OK</Button>
 				<Button 
-					MinWidth="100" 
+					MinWidth="150" 
 					HorizontalContentAlignment="Center"
 					x:Name="BtnCancel"
 					>Cancel</Button>
 			</StackPanel>
 			<ProgressBar Margin="0,10" IsIndeterminate="True" IsVisible="{Binding IsConnecting}" />
 		</StackPanel>
-		<StackPanel Spacing="5">
+		<StackPanel Spacing="5"
+			IsEnabled="{Binding !IsConnecting}"		
+			>
 			<Label>Bucket Name</Label>
 			<TextBox Text="{Binding BucketName}"/>
-			<CheckBox>Authenticate</CheckBox>
-			<StackPanel Margin="20,0,0,0" Spacing="5">
+			<Label>Region</Label>
+			<TextBox Text="{Binding Region}" Watermark="eu-west-2"></TextBox>
+			<CheckBox IsChecked="{Binding UseAuthentication}">Authenticate</CheckBox>
+			<StackPanel Margin="20,0,0,0" Spacing="5"
+						IsEnabled="{Binding UseAuthentication}">
 				<Label>Access Key</Label>
 				<TextBox Text="{Binding AccessKey}"/>
 				<Label>Secret Key</Label>
